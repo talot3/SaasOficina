@@ -1,83 +1,1247 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutoMech - Gestão de Oficina</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoMech - Gestão de Oficina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar {
+            transition: all 0.3s;
+        }
+        .sidebar.collapsed {
+            width: 70px;
+        }
+        .sidebar.collapsed .sidebar-text {
+            display: none;
+        }
+        .sidebar.collapsed .logo-text {
+            display: none;
+        }
+        .sidebar.collapsed .menu-item {
+            justify-content: center;
+        }
+        .main-content {
+            transition: all 0.3s;
+        }
+        .sidebar.collapsed + .main-content {
+            margin-left: 70px;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-900">
-  <div class="max-w-4xl mx-auto py-12">
-    <h1 class="text-3xl font-bold mb-8 text-center">AutoMech - Integração Supabase</h1>
-
-    <!-- Formulário de Cliente -->
-    <form id="formCliente" class="bg-white shadow-md rounded p-6 mb-6 space-y-4">
-      <h2 class="text-xl font-semibold mb-2">Cadastro de Cliente</h2>
-      <input type="text" id="nomeCliente" placeholder="Nome" class="w-full border p-2 rounded" required />
-      <input type="text" id="telefoneCliente" placeholder="Telefone" class="w-full border p-2 rounded" required />
-      <input type="email" id="emailCliente" placeholder="Email" class="w-full border p-2 rounded" required />
-      <input type="text" id="veiculoCliente" placeholder="Veículo" class="w-full border p-2 rounded" required />
-      <input type="text" id="placaCliente" placeholder="Placa" class="w-full border p-2 rounded" required />
-      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Salvar Cliente</button>
-    </form>
-
-    <!-- Lista de Clientes -->
-    <div class="bg-white shadow-md rounded p-6">
-      <h2 class="text-xl font-semibold mb-4">Clientes</h2>
-      <ul id="listaClientes" class="space-y-2"></ul>
+<body class="bg-gray-50 font-sans">
+    <!-- Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="animate-pulse flex flex-col items-center">
+            <div class="w-16 h-16 bg-blue-500 rounded-full mb-4"></div>
+            <div class="text-2xl font-bold text-gray-700">AutoMech</div>
+        </div>
     </div>
-  </div>
 
-<script>
-const BASE_URL = "https://jrjuqfppropbsgnkuydo.supabase.co/rest/v1";
-const HEADERS = {
-  "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyanVxZnBwcm9wYnNnbmt1eWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNDQyNjUsImV4cCI6MjA2OTcyMDI2NX0.QQt1XRxY7BX_8aPFE4du6Lrr8Nnfao7nIseR8x8OwmI",
-  "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyanVxZnBwcm9wYnNnbmt1eWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNDQyNjUsImV4cCI6MjA2OTcyMDI2NX0.QQt1XRxY7BX_8aPFE4du6Lrr8Nnfao7nIseR8x8OwmI",
-  "Content-Type": "application/json"
-};
+    <!-- App Container -->
+    <div class="flex h-screen overflow-hidden hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar bg-white shadow-lg w-64 flex flex-col fixed h-full z-40">
+            <!-- Logo -->
+            <div class="p-4 flex items-center space-x-2 border-b border-gray-200">
+                <div class="w-8 h-8 bg-blue-500 rounded-full"></div>
+                <span class="logo-text text-xl font-bold text-gray-800">AutoMech</span>
+            </div>
+            
+            <!-- User Profile -->
+            <div class="p-4 flex items-center space-x-3 border-b border-gray-200">
+                <div class="w-10 h-10 bg-gray-300 rounded-full"></div>
+                <div class="sidebar-text">
+                    <div class="font-medium text-gray-800">Admin</div>
+                    <div class="text-xs text-gray-500">Administrador</div>
+                </div>
+            </div>
+            
+            <!-- Menu -->
+            <nav class="flex-1 overflow-y-auto py-4">
+                <div class="px-4 space-y-1">
+                    <a href="#" class="menu-item flex items-center space-x-3 p-2 rounded-lg bg-blue-50 text-blue-600">
+                        <i class="fas fa-tachometer-alt text-lg"></i>
+                        <span class="sidebar-text font-medium">Dashboard</span>
+                    </a>
+                    <a href="#" class="menu-item flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="showModule('clientes')">
+                        <i class="fas fa-users text-lg"></i>
+                        <span class="sidebar-text">Clientes</span>
+                    </a>
+                    <a href="#" class="menu-item flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="showModule('produtos')">
+                        <i class="fas fa-boxes text-lg"></i>
+                        <span class="sidebar-text">Produtos</span>
+                    </a>
+                    <a href="#" class="menu-item flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="showModule('ordens')">
+                        <i class="fas fa-clipboard-list text-lg"></i>
+                        <span class="sidebar-text">Ordens de Serviço</span>
+                    </a>
+                    <a href="#" class="menu-item flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="showModule('financeiro')">
+                        <i class="fas fa-dollar-sign text-lg"></i>
+                        <span class="sidebar-text">Financeiro</span>
+                    </a>
+                </div>
+                
+                <div class="px-4 mt-8">
+                    <div class="text-xs uppercase font-semibold text-gray-500 mb-2 sidebar-text">Configurações</div>
+                    <a href="#" class="menu-item flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 text-gray-700">
+                        <i class="fas fa-cog text-lg"></i>
+                        <span class="sidebar-text">Configurações</span>
+                    </a>
+                    <a href="#" class="menu-item flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 text-gray-700" onclick="logout()">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                        <span class="sidebar-text">Sair</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content flex-1 flex flex-col ml-64">
+            <!-- Topbar -->
+            <header class="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <button id="sidebarToggle" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-800" id="moduleTitle">Dashboard</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-bell text-xl"></i>
+                        </button>
+                        <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </div>
+                    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+                </div>
+            </header>
+            
+            <!-- Content Area -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <!-- Dashboard Module -->
+                <div id="dashboardModule" class="module-content">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Ordens Abertas</p>
+                                    <h3 class="text-2xl font-bold text-gray-800 mt-1">12</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-blue-50 text-blue-600">
+                                    <i class="fas fa-clipboard-list text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <span class="text-sm font-medium text-green-500">+2.5%</span>
+                                <span class="text-sm text-gray-500 ml-2">vs último mês</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Entregas Hoje</p>
+                                    <h3 class="text-2xl font-bold text-gray-800 mt-1">3</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-orange-50 text-orange-600">
+                                    <i class="fas fa-car text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <span class="text-sm font-medium text-red-500">-1</span>
+                                <span class="text-sm text-gray-500 ml-2">vs ontem</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Recebimentos</p>
+                                    <h3 class="text-2xl font-bold text-gray-800 mt-1">R$ 8,450</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-green-50 text-green-600">
+                                    <i class="fas fa-dollar-sign text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <span class="text-sm font-medium text-green-500">+15%</span>
+                                <span class="text-sm text-gray-500 ml-2">vs último mês</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-300">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Clientes Novos</p>
+                                    <h3 class="text-2xl font-bold text-gray-800 mt-1">5</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-purple-50 text-purple-600">
+                                    <i class="fas fa-user-plus text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <span class="text-sm font-medium text-green-500">+25%</span>
+                                <span class="text-sm text-gray-500 ml-2">vs último mês</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Orders -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold text-gray-800">Ordens Recentes</h2>
+                            <button class="text-sm font-medium text-blue-600 hover:text-blue-800">Ver todas</button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nº OS</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Veículo</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#1254</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">João Silva</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Golf 1.6</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">15/06/2023</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Em andamento</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ 850,00</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#1253</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Maria Souza</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Civic 2.0</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">14/06/2023</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Concluída</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ 1,250,00</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#1252</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Carlos Oliveira</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Corolla 1.8</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">13/06/2023</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Aberta</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ 650,00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Clientes Module -->
+                <div id="clientesModule" class="module-content hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold text-gray-800">Clientes</h2>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium" onclick="showClientForm()">
+                                <i class="fas fa-plus mr-2"></i>Novo Cliente
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4 flex items-center justify-between">
+                            <div class="relative w-full max-w-md">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Buscar clientes...">
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-mail</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Veículo</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="clientesTableBody">
+                                    <!-- Client data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Client Form Modal -->
+                <div id="clientFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl shadow-lg w-full max-w-md">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-800">Novo Cliente</h3>
+                                <button onclick="hideClientForm()" class="text-gray-400 hover:text-gray-500">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <form id="clientForm" class="space-y-4">
+                                <div>
+                                    <label for="clientName" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                                    <input type="text" id="clientName" name="clientName" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="clientPhone" class="block text-sm font-medium text-gray-700">Telefone</label>
+                                    <input type="text" id="clientPhone" name="clientPhone" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="clientEmail" class="block text-sm font-medium text-gray-700">E-mail</label>
+                                    <input type="email" id="clientEmail" name="clientEmail" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="clientVehicle" class="block text-sm font-medium text-gray-700">Veículo</label>
+                                    <input type="text" id="clientVehicle" name="clientVehicle" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="clientPlate" class="block text-sm font-medium text-gray-700">Placa</label>
+                                    <input type="text" id="clientPlate" name="clientPlate" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="clientNotes" class="block text-sm font-medium text-gray-700">Observações</label>
+                                    <textarea id="clientNotes" name="clientNotes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="hideClientForm()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+                                    <button type="submit" class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Produtos Module -->
+                <div id="produtosModule" class="module-content hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold text-gray-800">Produtos</h2>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium" onclick="showProductForm()">
+                                <i class="fas fa-plus mr-2"></i>Novo Produto
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4 flex items-center justify-between">
+                            <div class="relative w-full max-w-md">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Buscar produtos...">
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estoque</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="produtosTableBody">
+                                    <!-- Product data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Product Form Modal -->
+                <div id="productFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl shadow-lg w-full max-w-md">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-800">Novo Produto</h3>
+                                <button onclick="hideProductForm()" class="text-gray-400 hover:text-gray-500">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <form id="productForm" class="space-y-4">
+                                <div>
+                                    <label for="productName" class="block text-sm font-medium text-gray-700">Nome</label>
+                                    <input type="text" id="productName" name="productName" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="productCategory" class="block text-sm font-medium text-gray-700">Categoria</label>
+                                    <select id="productCategory" name="productCategory" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Selecione...</option>
+                                        <option value="Peças">Peças</option>
+                                        <option value="Óleos e Lubrificantes">Óleos e Lubrificantes</option>
+                                        <option value="Filtros">Filtros</option>
+                                        <option value="Acessórios">Acessórios</option>
+                                        <option value="Baterias">Baterias</option>
+                                        <option value="Pneus">Pneus</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="productPrice" class="block text-sm font-medium text-gray-700">Valor de Venda</label>
+                                    <input type="text" id="productPrice" name="productPrice" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="productCost" class="block text-sm font-medium text-gray-700">Custo</label>
+                                    <input type="text" id="productCost" name="productCost" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="productStock" class="block text-sm font-medium text-gray-700">Estoque</label>
+                                    <input type="number" id="productStock" name="productStock" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="hideProductForm()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+                                    <button type="submit" class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ordens Module -->
+                <div id="ordensModule" class="module-content hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold text-gray-800">Ordens de Serviço</h2>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium" onclick="showOSForm()">
+                                <i class="fas fa-plus mr-2"></i>Nova OS
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4 flex items-center space-x-4">
+                            <div class="relative w-full max-w-md">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Buscar ordens...">
+                            </div>
+                            
+                            <select class="border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Todos os status</option>
+                                <option value="aberta">Aberta</option>
+                                <option value="andamento">Em andamento</option>
+                                <option value="concluida">Concluída</option>
+                            </select>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nº OS</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Veículo</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="ordensTableBody">
+                                    <!-- OS data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- OS Form Modal -->
+                <div id="osFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl shadow-lg w-full max-w-4xl">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-800">Nova Ordem de Serviço</h3>
+                                <button onclick="hideOSForm()" class="text-gray-400 hover:text-gray-500">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <form id="osForm" class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="osClient" class="block text-sm font-medium text-gray-700">Cliente</label>
+                                        <select id="osClient" name="osClient" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">Selecione um cliente...</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="osVehicle" class="block text-sm font-medium text-gray-700">Veículo</label>
+                                        <input type="text" id="osVehicle" name="osVehicle" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="osPlate" class="block text-sm font-medium text-gray-700">Placa</label>
+                                        <input type="text" id="osPlate" name="osPlate" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="osEntryDate" class="block text-sm font-medium text-gray-700">Data de Entrada</label>
+                                        <input type="date" id="osEntryDate" name="osEntryDate" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="osDeliveryDate" class="block text-sm font-medium text-gray-700">Previsão de Entrega</label>
+                                        <input type="date" id="osDeliveryDate" name="osDeliveryDate" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="osStatus" class="block text-sm font-medium text-gray-700">Status</label>
+                                        <select id="osStatus" name="osStatus" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="aberta">Aberta</option>
+                                            <option value="andamento">Em andamento</option>
+                                            <option value="concluida">Concluída</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Serviços</label>
+                                    <div class="mt-1 space-y-2" id="servicesContainer">
+                                        <div class="flex space-x-2">
+                                            <input type="text" placeholder="Descrição do serviço" class="flex-1 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <input type="text" placeholder="Valor" class="w-24 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <button type="button" class="text-red-500 hover:text-red-700">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="addServiceField()" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-plus mr-1"></i>Adicionar serviço
+                                    </button>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Produtos</label>
+                                    <div class="mt-1 space-y-2" id="productsContainer">
+                                        <div class="flex space-x-2">
+                                            <select class="flex-1 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                                <option value="">Selecione um produto...</option>
+                                            </select>
+                                            <input type="number" placeholder="Quantidade" min="1" class="w-20 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <button type="button" class="text-red-500 hover:text-red-700">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="addProductField()" class="mt-2 text-sm text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-plus mr-1"></i>Adicionar produto
+                                    </button>
+                                </div>
+                                
+                                <div>
+                                    <label for="osNotes" class="block text-sm font-medium text-gray-700">Observações</label>
+                                    <textarea id="osNotes" name="osNotes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="osDiscount" class="block text-sm font-medium text-gray-700">Desconto</label>
+                                        <input type="text" id="osDiscount" name="osDiscount" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="osTotal" class="block text-sm font-medium text-gray-700">Valor Total</label>
+                                        <input type="text" id="osTotal" name="osTotal" readonly class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-gray-100">
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="hideOSForm()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+                                    <button type="submit" class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Financeiro Module -->
+                <div id="financeiroModule" class="module-content hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold text-gray-800">Contas a Receber</h2>
+                            <div class="flex space-x-2">
+                                <select class="border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Todos os status</option>
+                                    <option value="pendente">Pendente</option>
+                                    <option value="pago">Pago</option>
+                                </select>
+                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                                    <i class="fas fa-download mr-2"></i>Exportar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="relative w-full max-w-md">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Buscar contas...">
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OS</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimento</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="financeiroTableBody">
+                                    <!-- Finance data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Payment Modal -->
+                <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl shadow-lg w-full max-w-md">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-800">Registrar Pagamento</h3>
+                                <button onclick="hidePaymentModal()" class="text-gray-400 hover:text-gray-500">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <form id="paymentForm" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">OS</label>
+                                    <p class="mt-1 text-gray-900">#1254 - João Silva (Golf 1.6)</p>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Valor Total</label>
+                                    <p class="mt-1 text-gray-900">R$ 850,00</p>
+                                </div>
+                                
+                                <div>
+                                    <label for="paymentAmount" class="block text-sm font-medium text-gray-700">Valor Pago</label>
+                                    <input type="text" id="paymentAmount" name="paymentAmount" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="paymentDate" class="block text-sm font-medium text-gray-700">Data do Pagamento</label>
+                                    <input type="date" id="paymentDate" name="paymentDate" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="paymentMethod" class="block text-sm font-medium text-gray-700">Forma de Pagamento</label>
+                                    <select id="paymentMethod" name="paymentMethod" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="dinheiro">Dinheiro</option>
+                                        <option value="cartao_credito">Cartão de Crédito</option>
+                                        <option value="cartao_debito">Cartão de Débito</option>
+                                        <option value="pix">PIX</option>
+                                        <option value="transferencia">Transferência Bancária</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="hidePaymentModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+                                    <button type="submit" class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Registrar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-8">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <i class="fas fa-tools text-white text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">AutoMech</h2>
+                <p class="text-gray-600 mt-2">Gestão de Oficina Mecânica</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="loginEmail" class="block text-sm font-medium text-gray-700">E-mail</label>
+                    <input type="email" id="loginEmail" name="loginEmail" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="seu@email.com">
+                </div>
+                
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="loginPassword" name="loginPassword" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="••••••••">
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="rememberMe" name="rememberMe" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="rememberMe" class="ml-2 block text-sm text-gray-700">Lembrar-me</label>
+                    </div>
+                    
+                    <a href="#" class="text-sm text-blue-600 hover:text-blue-800">Esqueceu a senha?</a>
+                </div>
+                
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Entrar
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    Não tem uma conta? <a href="#" class="text-blue-600 hover:text-blue-800">Solicite acesso</a>
+                </p>
+            </div>
+        </div>
+    </div>
 
-// Função para salvar cliente
-document.getElementById("formCliente").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const cliente = {
-    nome: document.getElementById("nomeCliente").value,
-    telefone: document.getElementById("telefoneCliente").value,
-    email: document.getElementById("emailCliente").value,
-    veiculo: document.getElementById("veiculoCliente").value,
-    placa: document.getElementById("placaCliente").value,
-  };
+    <script>
+        // Sample data for demonstration
+        const sampleClients = [
+            { id: 1, name: "João Silva", phone: "(11) 98765-4321", email: "joao@email.com", vehicle: "Golf 1.6", plate: "ABC1D23" },
+            { id: 2, name: "Maria Souza", phone: "(11) 91234-5678", email: "maria@email.com", vehicle: "Civic 2.0", plate: "XYZ9W87" },
+            { id: 3, name: "Carlos Oliveira", phone: "(11) 92345-6789", email: "carlos@email.com", vehicle: "Corolla 1.8", plate: "DEF4G56" },
+            { id: 4, name: "Ana Pereira", phone: "(11) 93456-7890", email: "ana@email.com", vehicle: "HB20 1.0", plate: "HIJ7K89" },
+            { id: 5, name: "Pedro Santos", phone: "(11) 94567-8901", email: "pedro@email.com", vehicle: "Onix 1.4", plate: "LMN0P12" }
+        ];
 
-  const res = await fetch(`${BASE_URL}/clientes`, {
-    method: "POST",
-    headers: HEADERS,
-    body: JSON.stringify(cliente),
-  });
-  if (res.ok) {
-    alert("Cliente salvo!");
-    carregarClientes();
-    e.target.reset();
-  } else {
-    alert("Erro ao salvar cliente.");
-  }
-});
+        const sampleProducts = [
+            { id: 1, name: "Óleo Motor 5W30", category: "Óleos e Lubrificantes", price: "89.90", cost: "45.00", stock: 24 },
+            { id: 2, name: "Filtro de Óleo", category: "Filtros", price: "32.50", cost: "15.00", stock: 18 },
+            { id: 3, name: "Pastilha de Freio", category: "Peças", price: "145.00", cost: "75.00", stock: 12 },
+            { id: 4, name: "Bateria 60Ah", category: "Baterias", price: "499.00", cost: "280.00", stock: 6 },
+            { id: 5, name: "Pneu 195/65 R15", category: "Pneus", price: "399.00", cost: "220.00", stock: 8 }
+        ];
 
-// Função para carregar clientes
-async function carregarClientes() {
-  const res = await fetch(`${BASE_URL}/clientes?select=*`, { headers: HEADERS });
-  const data = await res.json();
-  const lista = document.getElementById("listaClientes");
-  lista.innerHTML = "";
-  data.forEach(c => {
-    const li = document.createElement("li");
-    li.textContent = `${c.nome} - ${c.veiculo} (${c.placa})`;
-    lista.appendChild(li);
-  });
-}
+        const sampleOS = [
+            { id: 1254, client: "João Silva", vehicle: "Golf 1.6", date: "15/06/2023", status: "andamento", value: "850.00" },
+            { id: 1253, client: "Maria Souza", vehicle: "Civic 2.0", date: "14/06/2023", status: "concluida", value: "1,250.00" },
+            { id: 1252, client: "Carlos Oliveira", vehicle: "Corolla 1.8", date: "13/06/2023", status: "aberta", value: "650.00" },
+            { id: 1251, client: "Ana Pereira", vehicle: "HB20 1.0", date: "12/06/2023", status: "concluida", value: "420.00" },
+            { id: 1250, client: "Pedro Santos", vehicle: "Onix 1.4", date: "10/06/2023", status: "pago", value: "780.00" }
+        ];
 
-// Inicializar
-carregarClientes();
-</script>
+        const sampleFinance = [
+            { os: 1254, client: "João Silva", dueDate: "20/06/2023", value: "850.00", status: "pendente" },
+            { os: 1253, client: "Maria Souza", dueDate: "19/06/2023", value: "1,250.00", status: "pago" },
+            { os: 1252, client: "Carlos Oliveira", dueDate: "18/06/2023", value: "650.00", status: "pendente" },
+            { os: 1251, client: "Ana Pereira", dueDate: "17/06/2023", value: "420.00", status: "pago" },
+            { os: 1250, client: "Pedro Santos", dueDate: "15/06/2023", value: "780.00", status: "pago" }
+        ];
+
+        // DOM Elements
+        const loadingScreen = document.getElementById('loading');
+        const loginModal = document.getElementById('loginModal');
+        const appContainer = document.querySelector('.flex.h-screen');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const moduleContents = document.querySelectorAll('.module-content');
+        const moduleTitle = document.getElementById('moduleTitle');
+        
+        // Form Modals
+        const clientFormModal = document.getElementById('clientFormModal');
+        const productFormModal = document.getElementById('productFormModal');
+        const osFormModal = document.getElementById('osFormModal');
+        const paymentModal = document.getElementById('paymentModal');
+        
+        // Table Bodies
+        const clientesTableBody = document.getElementById('clientesTableBody');
+        const produtosTableBody = document.getElementById('produtosTableBody');
+        const ordensTableBody = document.getElementById('ordensTableBody');
+        const financeiroTableBody = document.getElementById('financeiroTableBody');
+        
+        // Forms
+        const loginForm = document.getElementById('loginForm');
+        const clientForm = document.getElementById('clientForm');
+        const productForm = document.getElementById('productForm');
+        const osForm = document.getElementById('osForm');
+        const paymentForm = document.getElementById('paymentForm');
+        
+        // Initialize the app
+        function initApp() {
+            // Hide loading screen after 1.5 seconds
+            setTimeout(() => {
+                loadingScreen.classList.add('hidden');
+                loginModal.classList.remove('hidden');
+            }, 1500);
+            
+            // Load sample data
+            loadClients();
+            loadProducts();
+            loadOS();
+            loadFinance();
+            
+            // Setup event listeners
+            setupEventListeners();
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Sidebar toggle
+            sidebarToggle.addEventListener('click', toggleSidebar);
+            
+            // Login form
+            loginForm.addEventListener('submit', handleLogin);
+            
+            // Client form
+            clientForm.addEventListener('submit', handleClientSubmit);
+            
+            // Product form
+            productForm.addEventListener('submit', handleProductSubmit);
+            
+            // OS form
+            osForm.addEventListener('submit', handleOSSubmit);
+            
+            // Payment form
+            paymentForm.addEventListener('submit', handlePaymentSubmit);
+        }
+        
+        // Toggle sidebar
+        function toggleSidebar() {
+            sidebar.classList.toggle('collapsed');
+        }
+        
+        // Handle login
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            // Credentials check
+            if (email === 'tallisongtr@gmail.com' && password === 'admin') {
+                loginModal.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+            } else {
+                alert('Credenciais inválidas! Por favor, tente novamente.');
+            }
+        }
+        
+        // Logout
+        function logout() {
+            if (confirm('Deseja realmente sair do sistema?')) {
+                appContainer.classList.add('hidden');
+                loginModal.classList.remove('hidden');
+                // Reset forms
+                loginForm.reset();
+                clientForm.reset();
+                productForm.reset();
+                osForm.reset();
+                paymentForm.reset();
+                // Show dashboard
+                showModule('dashboard');
+            }
+        }
+        
+        // Show module
+        function showModule(module) {
+            // Hide all modules
+            moduleContents.forEach(mod => mod.classList.add('hidden'));
+            
+            // Show selected module
+            document.getElementById(`${module}Module`).classList.remove('hidden');
+            
+            // Update title
+            const titles = {
+                'dashboard': 'Dashboard',
+                'clientes': 'Clientes',
+                'produtos': 'Produtos',
+                'ordens': 'Ordens de Serviço',
+                'financeiro': 'Financeiro'
+            };
+            moduleTitle.textContent = titles[module];
+        }
+        
+        // Show client form
+        function showClientForm() {
+            clientFormModal.classList.remove('hidden');
+        }
+        
+        // Hide client form
+        function hideClientForm() {
+            clientFormModal.classList.add('hidden');
+            clientForm.reset();
+        }
+        
+        // Show product form
+        function showProductForm() {
+            productFormModal.classList.remove('hidden');
+        }
+        
+        // Hide product form
+        function hideProductForm() {
+            productFormModal.classList.add('hidden');
+            productForm.reset();
+        }
+        
+        // Show OS form
+        function showOSForm() {
+            // Populate client dropdown
+            const osClientSelect = document.getElementById('osClient');
+            osClientSelect.innerHTML = '<option value="">Selecione um cliente...</option>';
+            
+            sampleClients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = `${client.name} - ${client.vehicle}`;
+                osClientSelect.appendChild(option);
+            });
+            
+            // Populate product dropdown
+            const productSelects = document.querySelectorAll('#productsContainer select');
+            productSelects.forEach(select => {
+                select.innerHTML = '<option value="">Selecione um produto...</option>';
+                sampleProducts.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.name} - R$ ${product.price}`;
+                    select.appendChild(option);
+                });
+            });
+            
+            // Set today's date as default
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('osEntryDate').value = today;
+            
+            osFormModal.classList.remove('hidden');
+        }
+        
+        // Hide OS form
+        function hideOSForm() {
+            osFormModal.classList.add('hidden');
+            osForm.reset();
+        }
+        
+        // Show payment modal
+        function showPaymentModal() {
+            paymentModal.classList.remove('hidden');
+        }
+        
+        // Hide payment modal
+        function hidePaymentModal() {
+            paymentModal.classList.add('hidden');
+            paymentForm.reset();
+        }
+        
+        // Add service field
+        function addServiceField() {
+            const container = document.getElementById('servicesContainer');
+            const div = document.createElement('div');
+            div.className = 'flex space-x-2';
+            div.innerHTML = `
+                <input type="text" placeholder="Descrição do serviço" class="flex-1 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <input type="text" placeholder="Valor" class="w-24 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <button type="button" class="text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        }
+        
+        // Add product field
+        function addProductField() {
+            const container = document.getElementById('productsContainer');
+            const div = document.createElement('div');
+            div.className = 'flex space-x-2';
+            
+            const select = document.createElement('select');
+            select.className = 'flex-1 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500';
+            select.innerHTML = '<option value="">Selecione um produto...</option>';
+            
+            sampleProducts.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id;
+                option.textContent = `${product.name} - R$ ${product.price}`;
+                select.appendChild(option);
+            });
+            
+            div.appendChild(select);
+            div.innerHTML += `
+                <input type="number" placeholder="Quantidade" min="1" class="w-20 border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <button type="button" class="text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        }
+        
+        // Handle client submit
+        function handleClientSubmit(e) {
+            e.preventDefault();
+            // In a real app, you would send this data to your backend
+            hideClientForm();
+            loadClients();
+        }
+        
+        // Handle product submit
+        function handleProductSubmit(e) {
+            e.preventDefault();
+            // In a real app, you would send this data to your backend
+            hideProductForm();
+            loadProducts();
+        }
+        
+        // Handle OS submit
+        function handleOSSubmit(e) {
+            e.preventDefault();
+            // In a real app, you would send this data to your backend
+            hideOSForm();
+            loadOS();
+        }
+        
+        // Handle payment submit
+        function handlePaymentSubmit(e) {
+            e.preventDefault();
+            // In a real app, you would send this data to your backend
+            hidePaymentModal();
+            loadFinance();
+        }
+        
+        // Load clients
+        function loadClients() {
+            clientesTableBody.innerHTML = '';
+            sampleClients.forEach(client => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${client.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${client.phone}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${client.email}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${client.vehicle} (${client.plate})</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="editClient(${client.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="text-red-600 hover:text-red-900" onclick="deleteClient(${client.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                clientesTableBody.appendChild(tr);
+            });
+        }
+        
+        // Load products
+        function loadProducts() {
+            produtosTableBody.innerHTML = '';
+            sampleProducts.forEach(product => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${product.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${product.category}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ ${product.price}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${product.stock}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="editProduct(${product.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="text-red-600 hover:text-red-900" onclick="deleteProduct(${product.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                produtosTableBody.appendChild(tr);
+            });
+        }
+        
+        // Load OS
+        function loadOS() {
+            ordensTableBody.innerHTML = '';
+            sampleOS.forEach(os => {
+                let statusClass, statusText;
+                switch(os.status) {
+                    case 'aberta':
+                        statusClass = 'bg-blue-100 text-blue-800';
+                        statusText = 'Aberta';
+                        break;
+                    case 'andamento':
+                        statusClass = 'bg-yellow-100 text-yellow-800';
+                        statusText = 'Em andamento';
+                        break;
+                    case 'concluida':
+                        statusClass = 'bg-green-100 text-green-800';
+                        statusText = 'Concluída';
+                        break;
+                    case 'pago':
+                        statusClass = 'bg-purple-100 text-purple-800';
+                        statusText = 'Pago';
+                        break;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#${os.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${os.client}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${os.vehicle}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${os.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ ${os.value}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="viewOS(${os.id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-green-600 hover:text-green-900 mr-3" onclick="completeOS(${os.id})">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="text-purple-600 hover:text-purple-900" onclick="showPaymentModal()">
+                            <i class="fas fa-dollar-sign"></i>
+                        </button>
+                    </td>
+                `;
+                ordensTableBody.appendChild(tr);
+            });
+        }
+        
+        // Load finance
+        function loadFinance() {
+            financeiroTableBody.innerHTML = '';
+            sampleFinance.forEach(item => {
+                let statusClass, statusText;
+                if (item.status === 'pendente') {
+                    statusClass = 'bg-red-100 text-red-800';
+                    statusText = 'Pendente';
+                } else {
+                    statusClass = 'bg-green-100 text-green-800';
+                    statusText = 'Pago';
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#${item.os}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.client}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.dueDate}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ ${item.value}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="viewPayment(${item.os})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${item.status === 'pendente' ? `
+                        <button class="text-green-600 hover:text-green-900" onclick="showPaymentModal()">
+                            <i class="fas fa-dollar-sign"></i>
+                        </button>
+                        ` : ''}
+                    </td>
+                `;
+                financeiroTableBody.appendChild(tr);
+            });
+        }
+        
+        // Edit client (sample function)
+        function editClient(id) {
+            const client = sampleClients.find(c => c.id === id);
+            if (client) {
+                document.getElementById('clientName').value = client.name;
+                document.getElementById('clientPhone').value = client.phone;
+                document.getElementById('clientEmail').value = client.email;
+                document.getElementById('clientVehicle').value = client.vehicle;
+                document.getElementById('clientPlate').value = client.plate;
+                showClientForm();
+            }
+        }
+        
+        // Delete client (sample function)
+        function deleteClient(id) {
+            if (confirm('Tem certeza que deseja excluir este cliente?')) {
+                // In a real app, you would send a request to your backend
+                alert('Cliente excluído com sucesso!');
+            }
+        }
+        
+        // Edit product (sample function)
+        function editProduct(id) {
+            const product = sampleProducts.find(p => p.id === id);
+            if (product) {
+                document.getElementById('productName').value = product.name;
+                document.getElementById('productCategory').value = product.category;
+                document.getElementById('productPrice').value = product.price;
+                document.getElementById('productCost').value = product.cost;
+                document.getElementById('productStock').value = product.stock;
+                showProductForm();
+            }
+        }
+        
+        // Delete product (sample function)
+        function deleteProduct(id) {
+            if (confirm('Tem certeza que deseja excluir este produto?')) {
+                // In a real app, you would send a request to your backend
+                alert('Produto excluído com sucesso!');
+            }
+        }
+        
+        // View OS (sample function)
+        function viewOS(id) {
+            alert(`Visualizando OS #${id}`);
+        }
+        
+        // Complete OS (sample function)
+        function completeOS(id) {
+            if (confirm('Marcar esta OS como concluída?')) {
+                // In a real app, you would send a request to your backend
+                alert('OS marcada como concluída!');
+            }
+        }
+        
+        // View payment (sample function)
+        function viewPayment(os) {
+            alert(`Visualizando pagamento da OS #${os}`);
+        }
+        
+        // Initialize the app when the page loads
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
 </body>
 </html>
