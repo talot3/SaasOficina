@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoMech - Gestão de Oficina</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <div class="max-w-4xl mx-auto py-12">
+    <h1 class="text-3xl font-bold mb-8 text-center">AutoMech - Integração Supabase</h1>
+
+    <!-- Formulário de Cliente -->
+    <form id="formCliente" class="bg-white shadow-md rounded p-6 mb-6 space-y-4">
+      <h2 class="text-xl font-semibold mb-2">Cadastro de Cliente</h2>
+      <input type="text" id="nomeCliente" placeholder="Nome" class="w-full border p-2 rounded" required />
+      <input type="text" id="telefoneCliente" placeholder="Telefone" class="w-full border p-2 rounded" required />
+      <input type="email" id="emailCliente" placeholder="Email" class="w-full border p-2 rounded" required />
+      <input type="text" id="veiculoCliente" placeholder="Veículo" class="w-full border p-2 rounded" required />
+      <input type="text" id="placaCliente" placeholder="Placa" class="w-full border p-2 rounded" required />
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Salvar Cliente</button>
+    </form>
+
+    <!-- Lista de Clientes -->
+    <div class="bg-white shadow-md rounded p-6">
+      <h2 class="text-xl font-semibold mb-4">Clientes</h2>
+      <ul id="listaClientes" class="space-y-2"></ul>
+    </div>
+  </div>
+
+<script>
+const BASE_URL = "https://jrjuqfppropbsgnkuydo.supabase.co/rest/v1";
+const HEADERS = {
+  "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyanVxZnBwcm9wYnNnbmt1eWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNDQyNjUsImV4cCI6MjA2OTcyMDI2NX0.QQt1XRxY7BX_8aPFE4du6Lrr8Nnfao7nIseR8x8OwmI",
+  "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyanVxZnBwcm9wYnNnbmt1eWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNDQyNjUsImV4cCI6MjA2OTcyMDI2NX0.QQt1XRxY7BX_8aPFE4du6Lrr8Nnfao7nIseR8x8OwmI",
+  "Content-Type": "application/json"
+};
+
+// Função para salvar cliente
+document.getElementById("formCliente").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const cliente = {
+    nome: document.getElementById("nomeCliente").value,
+    telefone: document.getElementById("telefoneCliente").value,
+    email: document.getElementById("emailCliente").value,
+    veiculo: document.getElementById("veiculoCliente").value,
+    placa: document.getElementById("placaCliente").value,
+  };
+
+  const res = await fetch(`${BASE_URL}/clientes`, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify(cliente),
+  });
+  if (res.ok) {
+    alert("Cliente salvo!");
+    carregarClientes();
+    e.target.reset();
+  } else {
+    alert("Erro ao salvar cliente.");
+  }
+});
+
+// Função para carregar clientes
+async function carregarClientes() {
+  const res = await fetch(`${BASE_URL}/clientes?select=*`, { headers: HEADERS });
+  const data = await res.json();
+  const lista = document.getElementById("listaClientes");
+  lista.innerHTML = "";
+  data.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = `${c.nome} - ${c.veiculo} (${c.placa})`;
+    lista.appendChild(li);
+  });
+}
+
+// Inicializar
+carregarClientes();
+</script>
+</body>
+</html>
